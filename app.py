@@ -1,9 +1,15 @@
 import os
 from flask import Flask
+from flask.ext.sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
 app.config.from_object(os.environ['APP_SETTINGS'])
-print(os.environ['APP_SETTINGS'])
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+db = SQLAlchemy(app)
+
+print (os.environ['DATABASE_URL'])
+from models import Result
+
 
 @app.route('/')
 def hello():

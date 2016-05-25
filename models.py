@@ -112,7 +112,7 @@ class Result(db.Model):
         self.lat = lat
         self.lon = lon
         self.weekends = weekends
-        self.weekly_hours
+        self.weekly_hours = weekly_hours
 
     def __repr__(self):
         return '<id {}>'.format(self.id)

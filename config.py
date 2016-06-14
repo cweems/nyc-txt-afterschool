@@ -8,6 +8,12 @@ class Config(object):
     CSRF_ENABLED = True
     SECRET_KEY = 'change-this'
     SQLALCHEMY_DATABASE_URI = os.environ['DATABASE_URL']
+    MAPZEN_API_KEY = os.environ['MAPZEN_API_KEY']
+
+    #Specify Location Coordinates for Geocoder
+    LOCATION_LAT = '40.730610'
+    LOCATION_LONG = '-73.935242'
+    LOCATION_RADIUS_KM = '100'
 
 class ProductionConfig(Config):
     DEBUG = False

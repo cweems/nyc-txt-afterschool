@@ -1,6 +1,7 @@
 import os
 import requests
 import operator
+import math
 from collections import namedtuple
 import re
 from flask import Flask, render_template, request, jsonify
@@ -16,6 +17,12 @@ db = SQLAlchemy(app)
 
 print (os.environ['DATABASE_URL'])
 from models import Result
+
+#school_year, summer, weekends, distance, telephone
+def format_response(name, address, borough, distance, telephone):
+	miles = math.ceil(distance*100)/100
+	message = ("Name: " + name + " Addr: " + address + " " + borough + " Distance: " + str(miles) + "mi. Call: " + telephone)
+	return message;
 
 
 @app.route('/api/<location>')
@@ -43,7 +50,6 @@ def find_location(location):
 			lon = lat_lon[0]
 
 			results = []
-			less_than_a_mile = []
 
 			user_location = (lat, lon)
 			print(user_location)
@@ -51,24 +57,29 @@ def find_location(location):
 				program_location = (row.lat, row.lon)
 				index = row.id
 				name = row.program_name
+				address = row.address1
 				borough = row.site_borough
 				distance = vincenty(user_location, program_location).miles
-				ResponseStructure = namedtuple('ResponseStructure', 'idNumber name borough distance')
+				telephone = row.cbo_sp_tel
+				message = format_response(name, address, borough, distance, telephone)
+				entry = {
+					"idNumber": index,
+					"name": name,
+					"address": address,
+					"borough": borough,
+					"distance": distance,
+					"telephone": telephone,
+					"message": message
+				}
 
-				entry = ResponseStructure(idNumber=index, name=name, borough=borough, distance=distance)
 				results.append(entry)
 
-			sorted_results = sorted(results, key=lambda entry: entry[3])
+			sorted_results = sorted(results, key=lambda entry: entry['distance'])
 			top_three_results = sorted_results[0:3]
-			print(top_three_results)
 			return jsonify(results=top_three_results);
 		except:
-			return "unable to find that address"
-
-		#, name=top_three_results.name, borough=top_three_results.borough, distance=top_three_results.distance
-
-		#name=top_three_results[2], borough=top_three_results[3], distance=top_three_results[4]
-	return render_template('/index.html', errors = errors, results = results)
+			errors.append('Geocoding failed. Check that Mapzen API Key is configured correctly.')
+			return render_template('/index.html', errors = errors, results = results)
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
@@ -80,8 +91,8 @@ def index():
 			print(zipcode)
 		except:
 			errors.append(
-                "Unable to get URL. Please make sure it's valid and try again."
-            )
+				"Unable to get URL. Please make sure it's valid and try again."
+			)
 			return render_template('index.html', errors = errors)
 		if zipcode:
 			for row in db.session.query(Result).filter(Result.site_zip == zipcode).all():

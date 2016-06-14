@@ -91,8 +91,8 @@ def index():
 @app.route('/twilio', methods=['GET', 'POST'])
 def sms_test():
 	resp = twilio.twiml.Response()
-    resp.message("Hello, the text worked")
-    return str(resp)
+	resp.message("Hello, the text worked")
+	return str(resp)
 
 if __name__ == '__main__':
 	app.run()

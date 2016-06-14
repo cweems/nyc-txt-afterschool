@@ -44,3 +44,6 @@ coverage.xml
 
 # Rope
 .ropeproject
+
+#Config
+config.py

@@ -16,7 +16,7 @@ class Result(db.Model):
     cbo_sp_tel = db.Column(db.String())
     elementary = db.Column(db.Boolean())
     enrollment = db.Column(db.Integer())
-    estimated = db.Column(db.Integer())
+    estimated = db.Column(db.Float())
     evenings = db.Column(db.Boolean())
     high_school = db.Column(db.Boolean())
     site_id = db.Column(db.String())
@@ -40,14 +40,15 @@ class Result(db.Model):
     summer = db.Column(db.Boolean())
 
     geometry = db.Column(db.String())
-    lat = db.Column(db.Integer())
-    lon = db.Column(db.Integer())
+    lat = db.Column(db.Float())
+    lon = db.Column(db.Float())
 
     weekends = db.Column(db.Boolean())
     weekly_hours = db.Column(db.String())
 
     def __init__(
             self,
+            academics,
             address1,
             address2,
             agency_name,
@@ -89,7 +90,7 @@ class Result(db.Model):
         self.arts_culture = arts_culture
         self.cbo_service = cbo_service
         self.cbo_sp_tel = cbo_sp_tel
-        self.elementary = enrollment
+        self.elementary = elementary
         self.estimated = estimated
         self.evenings = evenings
         self.high_school = high_school

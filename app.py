@@ -18,66 +18,78 @@ db = SQLAlchemy(app)
 print (os.environ['DATABASE_URL'])
 from models import Result
 
-#school_year, summer, weekends, distance, telephone
-def format_response(name, address, borough, distance, telephone):
+def calculate_distance(user_location, program_location):
+	distance = vincenty(user_location, program_location).miles
+	return(distance)
+
+def format_response(row, user_location):
+	index = row.id
+	program_location = (row.lat, row.lon)
+	name = row.program_name
+	address = row.address1
+	borough = row.site_borough
+	distance = calculate_distance(user_location, program_location)
+	telephone = row.cbo_sp_tel
 	miles = math.ceil(distance*100)/100
-	message = ("Name: " + name + " Addr: " + address + " " + borough + " Distance: " + str(miles) + "mi. Call: " + telephone)
-	return message;
+	message = (name + " Addr: " + address + " " + borough + " Distance: " + str(miles) + "mi. Call: " + telephone)
+	entry = {
+		"idNumber": index,
+		"name": name,
+		"address": address,
+		"borough": borough,
+		"distance": distance,
+		"telephone": telephone,
+		"message": message
+	}
+	return entry;
 
-def find_location(location):
-	results = [];
-	errors = [];
-	#print(location)
-	if(re.match('\d{5}(-\d{4})?$', location)):
-		print(location)
-		for row in db.session.query(Result).filter(Result.site_zip == location).all():
-			results.append(row.site_name)
-			print(row.site_name)
+def sorted_results_function(results):
+	test_to_return = sorted(results, key=lambda entry: entry['distance'])
+	return test_to_return
+
+def paginate_results(results, start, stop):
+	return results[start:stop]
+
+def geocode(location_string):
+	mapzen_api_key = app.config['MAPZEN_API_KEY']
+	boundary_lattitude = app.config['LOCATION_LAT']
+	boundary_longitude = app.config['LOCATION_LONG']
+	radius = app.config['LOCATION_RADIUS_KM']
+
+	url = "https://search.mapzen.com/v1/search?text=" + location_string + "&api_key=" + mapzen_api_key + "&boundary.circle.lat=" + boundary_lattitude + "&boundary.circle.lon=" + boundary_longitude + "&boundary.circle.radius=" + radius + "&size=1"
+	try:
+		req = requests.get(url)
+		results = req.json()
+		lat_lon = results['features'][0]['geometry']['coordinates']
+		lat = lat_lon[1]
+		lon = lat_lon[0]
+
+		results = []
+
+		user_location = (lat, lon)
+
+		print(user_location)
+		for row in db.session.query(Result).all():
+
+			entry = format_response(row, user_location)
+
+			results.append(entry)
+
+		sorted_results = sorted_results_function(results)
+		top_three_results = paginate_results(sorted_results, 0, 3)
+		return top_three_results;
+	except:
+		errors.append('Geocoding failed. Check that Mapzen API Key is configured correctly.')
+		return render_template('/index.html', errors = errors, results = results)
+
+#Currently does same thing for addresses and zip-codes, keeping in case we want an analytics event
+def location_type(location_string):
+	if(re.match('\d{5}(-\d{4})?$', location_string)):
+		results = geocode(location_string)
+		return results
 	else:
-		mapzen_api_key = app.config['MAPZEN_API_KEY']
-		boundary_lattitude = app.config['LOCATION_LAT']
-		boundary_longitude = app.config['LOCATION_LONG']
-		radius = app.config['LOCATION_RADIUS_KM']
-
-		url = "https://search.mapzen.com/v1/search?text=" + location + "&api_key=" + mapzen_api_key + "&boundary.circle.lat=" + boundary_lattitude + "&boundary.circle.lon=" + boundary_longitude + "&boundary.circle.radius=" + radius + "&size=1"
-		try:
-			req = requests.get(url)
-			results = req.json()
-			lat_lon = results['features'][0]['geometry']['coordinates']
-			lat = lat_lon[1]
-			lon = lat_lon[0]
-
-			results = []
-
-			user_location = (lat, lon)
-			print(user_location)
-			for row in db.session.query(Result).all():
-				program_location = (row.lat, row.lon)
-				index = row.id
-				name = row.program_name
-				address = row.address1
-				borough = row.site_borough
-				distance = vincenty(user_location, program_location).miles
-				telephone = row.cbo_sp_tel
-				message = format_response(name, address, borough, distance, telephone)
-				entry = {
-					"idNumber": index,
-					"name": name,
-					"address": address,
-					"borough": borough,
-					"distance": distance,
-					"telephone": telephone,
-					"message": message
-				}
-
-				results.append(entry)
-
-			sorted_results = sorted(results, key=lambda entry: entry['distance'])
-			top_three_results = sorted_results[0:1]
-			return top_three_results;
-		except:
-			errors.append('Geocoding failed. Check that Mapzen API Key is configured correctly.')
-			return render_template('/index.html', errors = errors, results = results)
+		results = geocode(location_string)
+		return results
 
 @app.route('/api/<location>')
 def location(location):
@@ -110,10 +122,13 @@ def sms_test():
 	resp = twilio.twiml.Response()
 	print(message)
 	if(message):
-		returned_results = find_location(message)
-		resp.message(returned_results[0]['message'])
+		returned_results = location_type(message)
+		counter = 0
+		for item in returned_results:
+			counter += 1
+			resp.message(str(counter) + ') ' + item['message'])
 	else:
-		resp.message("No address found!")
+		resp.message("Sorry, we couldn't understand that address. Try entering another address or zip-code located in NYC.")
 
 
 	return str(resp)

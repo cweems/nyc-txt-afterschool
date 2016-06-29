@@ -4,14 +4,17 @@ import operator
 import math
 from collections import namedtuple
 import re
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, session
 import urllib.request
 from flask.ext.sqlalchemy import SQLAlchemy
 from geopy.distance import vincenty
 import twilio.twiml
 
+print(os.environ['SESSION_SECRET'])
+
 app = Flask(__name__)
 app.config.from_object(os.environ['APP_SETTINGS'])
+app.secret_key = os.environ['SESSION_SECRET']
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
@@ -117,6 +120,7 @@ def index():
 
 @app.route('/sms/', methods=['GET', 'POST'])
 def sms_test():
+	total_count = session.get('counter', 0)
 	from_number = request.values.get('From', None)
 	message = str(request.values.get('Body'))
 	resp = twilio.twiml.Response()
@@ -126,7 +130,9 @@ def sms_test():
 		counter = 0
 		for item in returned_results:
 			counter += 1
-			resp.message(str(counter) + ') ' + item['message'])
+			total_count += 1
+			session['total_count'] = total_count
+			resp.message(str(counter) + ') ' + item['message'] + ' Results sent: ' + str(total_count))
 	else:
 		resp.message("Sorry, we couldn't understand that address. Try entering another address or zip-code located in NYC.")
 

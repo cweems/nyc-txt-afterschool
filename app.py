@@ -24,8 +24,6 @@ def format_response(name, address, borough, distance, telephone):
 	message = ("Name: " + name + " Addr: " + address + " " + borough + " Distance: " + str(miles) + "mi. Call: " + telephone)
 	return message;
 
-
-@app.route('/api/<location>')
 def find_location(location):
 	results = [];
 	errors = [];
@@ -75,11 +73,16 @@ def find_location(location):
 				results.append(entry)
 
 			sorted_results = sorted(results, key=lambda entry: entry['distance'])
-			top_three_results = sorted_results[0:3]
-			return jsonify(results=top_three_results);
+			top_three_results = sorted_results[0:1]
+			return top_three_results;
 		except:
 			errors.append('Geocoding failed. Check that Mapzen API Key is configured correctly.')
 			return render_template('/index.html', errors = errors, results = results)
+
+@app.route('/api/<location>')
+def location(location):
+	location = find_location(location)
+	return jsonify(result=location)
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
@@ -100,10 +103,19 @@ def index():
 				print(results)
 	return render_template('/index.html', errors = errors, results = results)
 
-@app.route('/twilio', methods=['GET', 'POST'])
+@app.route('/sms/', methods=['GET', 'POST'])
 def sms_test():
+	from_number = request.values.get('From', None)
+	message = str(request.values.get('Body'))
 	resp = twilio.twiml.Response()
-	resp.message("Hello, the text worked")
+	print(message)
+	if(message):
+		returned_results = find_location(message)
+		resp.message(returned_results[0]['message'])
+	else:
+		resp.message("No address found!")
+
+
 	return str(resp)
 
 if __name__ == '__main__':

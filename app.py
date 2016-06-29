@@ -120,7 +120,7 @@ def index():
 
 @app.route('/sms/', methods=['GET', 'POST'])
 def sms_test():
-	total_count = session.get('counter', 0)
+	total_count = session.get('total_count', 0)
 	from_number = request.values.get('From', None)
 	message = str(request.values.get('Body'))
 	resp = twilio.twiml.Response()
